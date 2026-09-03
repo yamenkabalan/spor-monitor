@@ -38,3 +38,14 @@ jobs:
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           HEARTBEAT: ${{ vars.HEARTBEAT || 'true' }}
         run: python monitor.py --once
+
+      - name: Upload debug snapshot (on failure)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: debug-snapshot
+          path: |
+            debug_page.png
+            debug_page.html
+          if-no-files-found: ignore
+          retention-days: 3

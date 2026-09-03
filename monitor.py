@@ -428,21 +428,34 @@ def run_once():
         browser = p.chromium.launch(headless=cfg.get("headless", True))
         ctx = browser.new_context(user_agent=UA, locale="tr-TR")
         page = ctx.new_page()
-        do_login(page, cfg)
-        cards, greens = check_once(page, cfg)
-        log("check: " + summary_line(cards))
-        if greens:
-            process_greens(greens, cfg, {})
-        elif cfg.get("heartbeat"):
-            counts = summarize(cards)
-            brk = " | ".join(
-                f"{CATEGORY_LABEL.get(k, k)}: {counts.get(k, 0)}"
-                for k in ["green", "blue", "pink", "gray", "yellow"]
-            )
-            send_telegram(cfg, f"⏱️ {now()}\nİzleniyor — açık seans yok.\n{brk}")
-        else:
-            log("No available (green) slots right now.")
-        browser.close()
+        try:
+            do_login(page, cfg)
+            cards, greens = check_once(page, cfg)
+            log("check: " + summary_line(cards))
+            if greens:
+                process_greens(greens, cfg, {})
+            elif cfg.get("heartbeat"):
+                counts = summarize(cards)
+                brk = " | ".join(
+                    f"{CATEGORY_LABEL.get(k, k)}: {counts.get(k, 0)}"
+                    for k in ["green", "blue", "pink", "gray", "yellow"]
+                )
+                send_telegram(cfg, f"⏱️ {now()}\nİzleniyor — açık seans yok.\n{brk}")
+            else:
+                log("No available (green) slots right now.")
+        except Exception as e:
+            log(f"ERROR during check: {e}")
+            # dump what the browser saw, so we can debug from CI artifacts
+            try:
+                page.screenshot(path=str(DEBUG_PNG), full_page=True)
+                DEBUG_HTML.write_text(page.content(), encoding="utf-8")
+                log(f"Saved debug snapshot: {DEBUG_PNG.name}, {DEBUG_HTML.name}")
+                log(f"Current URL: {page.url}")
+            except Exception as e2:
+                log(f"debug dump failed: {e2}")
+            raise
+        finally:
+            browser.close()
 
 
 def run_forever():
