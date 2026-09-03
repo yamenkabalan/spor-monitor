@@ -268,6 +268,15 @@ def do_login(page, cfg):
             break
         except Exception:
             pass
+    # wait for the TC field; if it never appears we likely got a block/challenge
+    try:
+        page.wait_for_selector("#txtTCPasaport", timeout=45000)
+    except Exception:
+        log(f"Login form not found. URL={page.url} | title={page.title()!r}")
+        raise RuntimeError(
+            "Login form (#txtTCPasaport) did not appear — the site may be "
+            "blocking this server's IP (geo/bot block)."
+        )
     page.fill("#txtTCPasaport", str(cfg["tc"]))
     page.fill("#txtSifre", str(cfg["password"]))
     page.click("#btnGirisYap")
@@ -445,12 +454,17 @@ def run_once():
                 log("No available (green) slots right now.")
         except Exception as e:
             log(f"ERROR during check: {e}")
-            # dump what the browser saw, so we can debug from CI artifacts
+            # dump what the browser saw, straight into the log + as artifacts
             try:
+                log(f"Current URL: {page.url}")
+                log(f"Page title : {page.title()!r}")
+                txt = page.evaluate(
+                    "() => document.body ? document.body.innerText.slice(0,500) : ''"
+                )
+                log("Page text  : " + " ".join(txt.split()))
                 page.screenshot(path=str(DEBUG_PNG), full_page=True)
                 DEBUG_HTML.write_text(page.content(), encoding="utf-8")
                 log(f"Saved debug snapshot: {DEBUG_PNG.name}, {DEBUG_HTML.name}")
-                log(f"Current URL: {page.url}")
             except Exception as e2:
                 log(f"debug dump failed: {e2}")
             raise
