@@ -1,0 +1,9 @@
+# NEVER commit your real credentials
+config.json
+
+# local runtime files
+monitor.log
+debug_page.html
+debug_page.png
+__pycache__/
+*.pyc
